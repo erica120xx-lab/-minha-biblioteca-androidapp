@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#10131d">
+<title>Minha Biblioteca Android</title>
+<style>
+:root{color-scheme:dark;--bg:#10131d;--panel:#1a2030;--muted:#aab3c5;--accent:#8b5cf6;--line:#30394d}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(160deg,#171b2a,#0e1119 60%);color:#f6f7fb;font:16px system-ui,-apple-system,Segoe UI,sans-serif;min-height:100vh}
+header{padding:26px 18px 18px;max-width:1050px;margin:auto}h1{margin:0;font-size:clamp(25px,5vw,38px)}header p{color:var(--muted);margin:8px 0 0}
+main{max-width:1050px;margin:auto;padding:0 18px 40px}.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0 20px}
+input,select,button{font:inherit;border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--panel);color:white}
+input{flex:1;min-width:180px}button{cursor:pointer}button.active,.primary{background:var(--accent);border-color:var(--accent)}
+.status{padding:12px 14px;background:#1a2030;border:1px solid var(--line);border-radius:14px;color:var(--muted);margin-bottom:18px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.cover{aspect-ratio:4/3;background:#252d42;display:grid;place-items:center;color:#c7b8ff;font-size:38px}
+.cover img{width:100%;height:100%;object-fit:cover}.info{padding:12px}.info h2{font-size:16px;margin:0 0 5px}.info p{font-size:13px;color:var(--muted);margin:0 0 12px}.info button{width:100%;padding:10px}
+.section{margin:26px 0 12px}.controls{display:flex;gap:8px;flex-wrap:wrap}.small{font-size:13px;color:var(--muted);line-height:1.5}
+footer{max-width:1050px;margin:auto;padding:0 18px 35px;color:var(--muted)}
+@media(min-width:700px){header{padding-top:40px}.grid{grid-template-columns:repeat(auto-fill,minmax(190px,1fr))}}
+</style>
+</head>
+<body>
+<header>
+  <h1>🎮 Minha Biblioteca Android</h1>
+  <p>Seus jogos organizados em um só lugar.</p>
+</header>
+<main>
+  <div class="toolbar">
+    <input id="search" type="search" placeholder="Pesquisar jogos..." aria-label="Pesquisar jogos">
+    <select id="category" aria-label="Filtrar categoria"><option value="">Todas as categorias</option></select>
+  </div>
+  <div class="status" id="status">Carregando catálogo…</div>
+  <div class="grid" id="games"></div>
+
+  <h2 class="section">Como você quer controlar?</h2>
+  <div class="controls">
+    <button id="touch" class="active" type="button">☝️ Tela sensível ao toque</button>
+    <button id="pad" type="button">🎮 Controle</button>
+    <button id="detect" type="button">Detectar controle</button>
+  </div>
+  <p class="small" id="padStatus">Modo de toque selecionado. A detecção de controles depende do suporte do navegador e da conexão Bluetooth/USB.</p>
+
+  <h2 class="section">Próxima etapa: executar os APKs</h2>
+  <p class="small">Esta primeira versão é a biblioteca. Um navegador Android não executa arquivos APK diretamente. Para jogar sem instalar no celular, precisaremos conectar cada jogo a um servidor/emulador remoto e transmitir a imagem e os comandos. Isso ainda não está incluído nesta versão.</p>
+</main>
+<footer>Biblioteca inicial — personalize o arquivo jogos.json para adicionar seus títulos.</footer>
+<script>
+let allGames=[];
+const statusEl=document.getElementById('status');
+const grid=document.getElementById('games');
+function safeText(s){return String(s??'')}
+function render(){
+ const q=document.getElementById('search').value.trim().toLowerCase();
+ const cat=document.getElementById('category').value;
+ const list=allGames.filter(g=>(!cat||g.categoria===cat)&&(!q||(g.nome+' '+g.categoria).toLowerCase().includes(q)));
+ grid.innerHTML='';
+ if(!list.length){grid.innerHTML='<p class="small">Nenhum jogo encontrado. Confira o arquivo jogos.json.</p>';return;}
+ for(const g of list){
+  const card=document.createElement('article');card.className='card';
+  const cover=document.createElement('div');cover.className='cover';
+  if(g.capa){const img=document.createElement('img');img.src=g.capa;img.alt='Capa de '+safeText(g.nome);img.onerror=()=>{cover.textContent='🎮'};cover.append(img)}else cover.textContent='🎮';
+  const info=document.createElement('div');info.className='info';
+  const title=document.createElement('h2');title.textContent=safeText(g.nome);
+  const desc=document.createElement('p');desc.textContent=safeText(g.categoria||'Sem categoria');
+  const btn=document.createElement('button');btn.className='primary';btn.textContent='Abrir jogo';
+  btn.addEventListener('click',()=>{if(g.apk)alert('APK cadastrado: '+g.apk+'\n\nEle ainda não pode ser executado diretamente no navegador. A integração com emulador remoto será a próxima etapa.');else alert('Adicione o endereço do APK no campo "apk" do jogos.json.');});
+  info.append(title,desc,btn);card.append(cover,info);grid.append(card);
+ }
+}
+fetch('./jogos.json').then(r=>{if(!r.ok)throw Error('Não foi possível carregar jogos.json');return r.json()})
+.then(data=>{allGames=Array.isArray(data)?data:(data.jogos||[]);const cats=[...new Set(allGames.map(g=>g.categoria).filter(Boolean))];for(const c of cats){const o=document.createElement('option');o.value=c;o.textContent=c;document.getElementById('category').append(o)}statusEl.textContent=allGames.length+' jogo(s) no catálogo.';render()})
+.catch(()=>{statusEl.textContent='Catálogo de exemplo carregado localmente. Se publicou no GitHub, confirme se jogos.json está na mesma pasta do index.html.';allGames=[];render()});
+document.getElementById('search').addEventListener('input',render);
+document.getElementById('category').addEventListener('change',render);
+const touch=document.getElementById('touch'),pad=document.getElementById('pad');
+touch.onclick=()=>{touch.classList.add('active');pad.classList.remove('active');document.getElementById('padStatus').textContent='Modo de toque selecionado. Os botões virtuais específicos serão configurados conforme o jogo.'};
+pad.onclick=()=>{pad.classList.add('active');touch.classList.remove('active');document.getElementById('padStatus').textContent='Modo controle selecionado. Conecte seu controle ao Android; a compatibilidade será testada pelo navegador.'};
+document.getElementById('detect').onclick=()=>{
+ if(!('getGamepads'in navigator)){document.getElementById('padStatus').textContent='Este navegador não oferece a API Gamepad.';return}
+ const pads=[...navigator.getGamepads()].filter(Boolean);
+ document.getElementById('padStatus').textContent=pads.length?'Controle detectado: '+pads.map(p=>p.id).join(', '):'Nenhum controle detectado. Conecte o controle e pressione um botão; depois tente novamente.';
+};
+</script>
+</body>
+</html>
